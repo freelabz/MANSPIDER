@@ -3,7 +3,14 @@ import logging
 from time import sleep
 import subprocess as sp
 from pathlib import Path
-from kreuzberg import extract_file_sync
+try:
+    from kreuzberg import extract_file_sync
+except ImportError:
+    # kreuzberg is optional: it pulls a heavy ONNX/Rust dependency (ort) with no musl
+    # wheels, so it can't be installed on Alpine/musl. When it's absent we fall back to
+    # raw string extraction for binary/document formats. Install the extra
+    # (`man-spider[documents]`) for rich pdf/docx/xlsx text extraction.
+    extract_file_sync = None
 from charset_normalizer import from_path
 
 from man_spider.lib.util import *
@@ -194,7 +201,7 @@ class FileParser:
         if is_text_file(str(file)):
             text_content = extract_text_file(str(file))
             log.debug(f"Extracted text from {pretty_filename} using charset-normalizer")
-        else:
+        elif extract_file_sync is not None:
             # Try kreuzberg for document formats (docx, pdf, xlsx, etc.)
             try:
                 result = extract_file_sync(str(file))
@@ -203,6 +210,9 @@ class FileParser:
                 # Kreuzberg doesn't support this file type, try extracting raw strings
                 log.debug(f"Kreuzberg failed for {pretty_filename}: {e}, trying string extraction")
                 text_content = extract_strings_from_binary(str(file))
+        else:
+            # kreuzberg not installed: fall back to raw string extraction for binary/document formats
+            text_content = extract_strings_from_binary(str(file))
 
         # Guard against None content
         if text_content is None:

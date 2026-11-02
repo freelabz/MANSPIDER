@@ -9,9 +9,17 @@ license = {text = "GPL-3.0"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "kreuzberg",
     "impacket",
     "charset-normalizer",
+]
+
+# kreuzberg is optional: it pulls a heavy ONNX/Rust dependency (ort) with no musl
+# wheels, so keeping it in core deps breaks install on Alpine/musl. It only adds
+# rich text extraction from document formats (pdf/docx/xlsx); without it, those
+# fall back to raw string extraction. Install with `man-spider[documents]` for it.
+[project.optional-dependencies]
+documents = [
+    "kreuzberg",
 ]
 
 [project.urls]
